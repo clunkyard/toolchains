@@ -101,6 +101,8 @@ jobs:
           set: |
             *.platform=${{ matrix.platforms }}
             *.cache-from=type=registry,ref=${{ env.CACHE }}
+            ${{ github.event_name == 'schedule' && '*.no-cache=true' || '' }}
+            ${{ github.event_name == 'schedule' && '*.pull=true' || '' }}
             default.cache-to=type=registry,ref=${{ env.CACHE }},mode=max
 
       - if: env.PUBLISH == 'true'

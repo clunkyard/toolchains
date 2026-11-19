@@ -62,7 +62,8 @@ Profiles in one family share its stages: C, C++ and Hew share wasi-sdk;
 Java, Kotlin, Scala and Clojure the JDK; C#, F# and PowerShell .NET.
 
 linux/amd64 is the supported platform. linux/arm64 is built, best effort,
-only where the CLI releases a Linux AArch64 SDK.
+only where the CLI releases a Linux AArch64 SDK. On an Arm computer, such as
+a Mac with Apple Silicon, add `--platform linux/amd64` to `docker run`.
 
 ## Working on it
 
@@ -91,7 +92,7 @@ for Ubuntu's security updates.
 | `bqn` | node | cbqn-0.12.0 | linux/amd64 |
 | `c` | wasi | wasi-sdk-34 | linux/amd64,linux/arm64 |
 | `cpp` | wasi | wasi-sdk-34 | linux/amd64,linux/arm64 |
-| `c-wasm` | wasi | clang-18 | linux/amd64 |
+| `c-wasm` | wasi | wasi-sdk-34 | linux/amd64 |
 | `hew` | wasi | hew-0.11.0 | linux/amd64 |
 | `zig` | zig | zig-0.17.1 | linux/amd64 |
 | `zig-wasm` | zig | zig-0.17.1 | linux/amd64 |
