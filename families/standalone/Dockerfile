@@ -16,7 +16,7 @@ ENV PATH=/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sb
 # links through Clang; Ubuntu's is the one on PATH, as hosted.
 FROM swift:6.4.2-noble AS swift-dist
 FROM cc AS swift
-RUN apt-get update && apt-get install -y --no-install-recommends clang lld && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends clang lld libncurses6 libsqlite3-0 && rm -rf /var/lib/apt/lists/*
 COPY --from=swift-dist /usr/lib/swift /usr/lib/swift
 COPY --from=swift-dist /usr/lib/clang/21 /usr/lib/clang/21
 COPY --from=swift-dist /usr/bin/swift-driver /usr/bin/swift-driver
