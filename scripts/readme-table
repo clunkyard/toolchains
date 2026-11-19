@@ -1,0 +1,12 @@
+#!/bin/sh
+# Rewrites the README's table of images from toolchains.yaml.
+set -eu
+cd "$(dirname "$0")/.."
+# shellcheck disable=SC2016 # the backticks are Markdown
+table=$(yq -r '.profiles | to_entries | .[] | "| `" + .key + "` | " + .value.family + " | " + .value.version + " | " + (.value.platforms // "linux/amd64") + " |"' toolchains.yaml)
+awk -v table="$table" '
+  /<!-- table -->/ { print; print "| Profile | Family | Toolchain | Platforms |"; print "| --- | --- | --- | --- |"; print table; skip = 1; next }
+  /<!-- \/table -->/ { skip = 0 }
+  !skip
+' README.md > README.md.new
+mv README.md.new README.md

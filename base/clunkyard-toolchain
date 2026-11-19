@@ -1,0 +1,80 @@
+#!/bin/sh
+# The image's entrypoint: the Clunkyard CLI on the project mounted at /bot,
+# with the engine, SDK and caches the image prepared, so nothing downloads.
+set -eu
+
+cache=/opt/clunkyard/cache
+starter=/opt/clunkyard/starter
+profile=$(cat /opt/clunkyard/profile 2>/dev/null || echo unprepared)
+cli() { exec clunkyard --shared-cache "$cache" "$@"; }
+
+usage() {
+  cat <<TEXT
+Clunkyard toolchain for $profile. Mount your robot project at /bot:
+
+  docker run --rm -v "\$PWD":/bot ghcr.io/clunkyard/toolchain/$profile COMMAND
+
+  new                  copy the $profile starter into an empty /bot
+  build                build the robot as the hosted builder does
+  run [OPPONENT]       build and play a local match (default: the practice rival)
+  match [ARGS...]      the CLI's match: [seed] [2d|3d] [ruleset] [--opponent NAME]...
+  check                check the toolchain (the CLI's doctor)
+  version              print the profile, toolchain and CLI versions
+  shell                open a shell in the project
+TEXT
+}
+
+# Work as the owner of /bot, so build output and replays are the caller's.
+# A root-owned /bot (rootless Docker, Docker Desktop, or no mount) keeps root,
+# which is the caller there; `docker run --user` skips this. Builds update
+# the SDK's bindings and the caches in place, so those become the owner's
+# too; they are small, and each container has its own copy.
+if [ "$(id -u)" = 0 ] && [ "${1:-}" != prepare ]; then
+  owner=$(stat -c %u:%g /bot)
+  if [ "${owner%%:*}" != 0 ]; then
+    chown -R "$owner" "$cache" "$HOME"
+    exec setpriv --reuid="${owner%%:*}" --regid="${owner##*:}" --clear-groups "$0" "$@"
+  fi
+fi
+
+need_project() {
+  [ -f /bot/bot.json ] && return
+  echo "No bot.json in /bot. Mount your robot project with -v \"\$PWD\":/bot, or start one with the new command." >&2
+  exit 2
+}
+
+command=${1:-help}
+[ $# -gt 0 ] && shift
+case $command in
+  build) need_project; cli build "$@" ;;
+  run)
+    need_project
+    opponent=practice
+    case ${1:-} in ''|-*|[0-9]*) ;; *) opponent=$1; shift ;; esac
+    cli match "$@" --opponent "$opponent" ;;
+  match) need_project; cli match "$@" ;;
+  check) need_project; cli doctor ;;
+  opponents|replay|clean) need_project; cli "$command" "$@" ;;
+  new)
+    if [ -n "$(ls -A /bot)" ]; then echo "/bot is not empty; new copies the starter only into an empty directory." >&2; exit 2; fi
+    cp -R "$starter"/. /bot/
+    echo "Copied the $profile starter into /bot. Next: build, then run." ;;
+  version)
+    echo "profile $profile"
+    echo "toolchain $(cat /opt/clunkyard/toolchain-version)"
+    echo "cli $(clunkyard --version)" ;;
+  shell) exec bash "$@" ;;
+  help|--help|-h) usage ;;
+  # Image build only: fetch this profile's starter, engine and SDK, and build
+  # the starter once so every cache a build fills is warm.
+  prepare)
+    profile=$1 version=$2
+    clunkyard new "$profile" "$starter"
+    (cd "$starter" && clunkyard --shared-cache "$cache" build)
+    rm -rf "$starter/.clunkyard"
+    echo "$profile" > /opt/clunkyard/profile
+    echo "$version" > /opt/clunkyard/toolchain-version
+    # Writable by any uid as well, for `docker run --user`.
+    chmod -R a+rwX "$cache" "$HOME" ;;
+  *) echo "Unknown command: $command" >&2; usage >&2; exit 2 ;;
+esac

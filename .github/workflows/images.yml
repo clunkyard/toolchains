@@ -1,0 +1,116 @@
+# Builds every profile in toolchains.yaml, plays its starter in the image,
+# and on main pushes it to ghcr.io/clunkyard/toolchain/<profile> with
+# provenance and an SBOM. Pull requests build and test without pushing. The
+# weekly run rebuilds from scratch for Ubuntu's security updates and the
+# newest 2.x CLI.
+name: images
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      profiles: ${{ steps.read.outputs.profiles }}
+      cli: ${{ steps.read.outputs.cli }}
+      revision: ${{ steps.read.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: read
+        run: |
+          profiles=$(yq -o=json -I=0 '[.profiles | to_entries | .[] | {"profile": .key, "family": .value.family, "version": .value.version, "platforms": (.value.platforms // "linux/amd64")}]' toolchains.yaml)
+          cli=$(npm view @clunkyard/cli@2 version --json | jq -r 'if type == "array" then last else . end')
+          echo "profiles=$profiles" >> "$GITHUB_OUTPUT"
+          echo "cli=$cli" >> "$GITHUB_OUTPUT"
+          echo "revision=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          echo "Clunkyard CLI $cli" >> "$GITHUB_STEP_SUMMARY"
+
+  image:
+    name: ${{ matrix.profile }}
+    needs: matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.profiles) }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      PROFILE: ${{ matrix.profile }}
+      FAMILY: ${{ matrix.family }}
+      TOOLCHAIN_VERSION: ${{ matrix.version }}
+      CLI_VERSION: ${{ needs.matrix.outputs.cli }}
+      REVISION: ${{ github.sha }}
+      IMAGE: ghcr.io/clunkyard/toolchain/${{ matrix.profile }}
+      CACHE: ghcr.io/clunkyard/toolchain/cache:${{ matrix.profile }}
+      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v5
+      - if: contains(matrix.platforms, 'arm64')
+        uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - if: env.PUBLISH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build for the smoke test
+        uses: docker/bake-action@v6
+        with:
+          source: .
+          load: true
+          set: |
+            *.platform=linux/amd64
+            *.cache-from=type=registry,ref=${{ env.CACHE }}
+            ${{ github.event_name == 'schedule' && '*.no-cache=true' || '' }}
+            ${{ github.event_name == 'schedule' && '*.pull=true' || '' }}
+
+      - name: Smoke test
+        run: scripts/smoke-test "$IMAGE:latest"
+
+      - name: Push
+        id: push
+        if: env.PUBLISH == 'true'
+        uses: docker/bake-action@v6
+        env:
+          TAGS: latest,${{ matrix.version }},${{ needs.matrix.outputs.revision }}
+        with:
+          source: .
+          push: true
+          provenance: mode=max
+          sbom: true
+          set: |
+            *.platform=${{ matrix.platforms }}
+            *.cache-from=type=registry,ref=${{ env.CACHE }}
+            default.cache-to=type=registry,ref=${{ env.CACHE }},mode=max
+
+      - if: env.PUBLISH == 'true'
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ fromJSON(steps.push.outputs.metadata).default['containerimage.digest'] }}
+          push-to-registry: true
+
+      - name: Summary
+        run: |
+          size=$(docker image inspect "$IMAGE:latest" --format '{{.Size}}')
+          echo "| $PROFILE | $TOOLCHAIN_VERSION | $((size / 1000000)) MB |" >> "$GITHUB_STEP_SUMMARY"
