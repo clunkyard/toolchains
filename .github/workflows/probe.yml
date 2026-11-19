@@ -1,0 +1,23 @@
+# Temporary: does a new package from this repository come out public?
+name: probe
+on: workflow_dispatch
+permissions:
+  contents: read
+  packages: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - run: |
+          printf 'FROM busybox:stable\nLABEL org.opencontainers.image.source=https://github.com/clunkyard/toolchains\n' > Dockerfile
+          docker buildx build --push -t ghcr.io/clunkyard/toolchain-probe:latest .
+      - name: Labels and annotations on a published image
+        run: |
+          docker buildx imagetools inspect --raw ghcr.io/clunkyard/toolchain/cobol:latest
+          docker buildx imagetools inspect ghcr.io/clunkyard/toolchain/cobol:latest --format '{{json .Image.Config.Labels}}'
