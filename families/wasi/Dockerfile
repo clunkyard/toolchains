@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 # C, C++ and Hew build to WebAssembly with wasi-sdk; C and C++ also build
 # natively with Clang 23 when bot.json asks for "target": "native". C → Wasm
-# is freestanding and uses Ubuntu's Clang and wasm-ld, as the hosted builder
-# does.
+# is freestanding: the hosted builder compiles it with wasi-sdk, and the
+# CLI's engine before wasi-sdk 34 with Ubuntu's Clang, so the image has both.
 FROM base AS cc
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
@@ -31,7 +31,7 @@ ENV CC=clang-23 CXX=clang++-23
 
 FROM c AS cpp
 
-FROM base AS c-wasm
+FROM wasi-sdk AS c-wasm
 RUN apt-get update && apt-get install -y --no-install-recommends clang lld && rm -rf /var/lib/apt/lists/*
 
 FROM wasi-sdk AS hew

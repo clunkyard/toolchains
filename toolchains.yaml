@@ -15,7 +15,7 @@ profiles:
   bqn:                 {family: node, version: cbqn-0.12.0}
   c:                   {family: wasi, version: wasi-sdk-34, platforms: "linux/amd64,linux/arm64"}
   cpp:                 {family: wasi, version: wasi-sdk-34, platforms: "linux/amd64,linux/arm64"}
-  c-wasm:              {family: wasi, version: clang-18}
+  c-wasm:              {family: wasi, version: wasi-sdk-34}
   hew:                 {family: wasi, version: hew-0.11.0}
   zig:                 {family: zig, version: zig-0.17.1}
   zig-wasm:            {family: zig, version: zig-0.17.1}
