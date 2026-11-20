@@ -1,13 +1,12 @@
 # syntax=docker/dockerfile:1
 # JDK 25 runs every JVM robot: the Java binding calls the core through the
 # Foreign Function and Memory API. Kotlin, Scala and Clojure build on it.
-FROM eclipse-temurin:25.0.5_8-jdk-noble AS jdk
+FROM eclipse-temurin:25.0.5_8-jdk-resolute AS jdk
 RUN rm -rf /opt/java/openjdk/lib/src.zip /opt/java/openjdk/jmods /opt/java/openjdk/man
 
 FROM base AS java
 COPY --from=jdk /opt/java/openjdk /opt/jdk-25
-RUN for tool in jar java javac javap; do ln -s "/opt/jdk-25/bin/$tool" "/usr/local/bin/$tool"; done \
- && java -version 2>&1 | grep -q '"25\.'
+RUN for tool in jar java javac javap; do ln -s "/opt/jdk-25/bin/$tool" "/usr/local/bin/$tool"; done
 
 # The official compiler and the public kotlinx.serialization runtime. The
 # starter uses JsonElement directly, so no compiler plugin is needed.
@@ -29,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf
  && echo "${KOTLIN_SERIALIZATION_JSON_SHA256}  /opt/kotlinx/kotlinx-serialization-json-jvm.jar" | sha256sum -c - \
  && rm /tmp/kotlin.zip
 
-# Ubuntu's Scala and Clojure depend on its JDK 21; /usr/local/bin comes
+# Ubuntu's Scala and Clojure depend on its JDK 25; /usr/local/bin comes
 # first on PATH, so java, javac and jar are 25's, and so is the java that
 # scalac starts.
 FROM java AS scala

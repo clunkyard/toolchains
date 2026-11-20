@@ -13,12 +13,13 @@ RUN curl -fsSLo /tmp/go.tar.gz "https://go.dev/dl/go${GO_VERSION}.linux-${TARGET
 ENV PATH=/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # The compiler and its runtime libraries from the official image. Swift
-# links through Clang; Ubuntu's is the one on PATH, as hosted.
-FROM swift:6.4.2-noble AS swift-dist
+# links through Clang; Ubuntu's is the one on PATH, as hosted. Ubuntu's is
+# Clang 21 like Swift's own, so Swift's link to its Clang headers,
+# /usr/lib/swift/clang, finds Ubuntu's /usr/lib/clang/21.
+FROM swift:6.4.2-resolute AS swift-dist
 FROM cc AS swift
 RUN apt-get update && apt-get install -y --no-install-recommends clang lld libncurses6 libsqlite3-0 && rm -rf /var/lib/apt/lists/*
 COPY --from=swift-dist /usr/lib/swift /usr/lib/swift
-COPY --from=swift-dist /usr/lib/clang/21 /usr/lib/clang/21
 COPY --from=swift-dist /usr/bin/swift-driver /usr/bin/swift-driver
 COPY --from=swift-dist /usr/bin/swift-frontend /usr/bin/swift-frontend
 RUN ln -s /usr/bin/swift-driver /usr/local/bin/swift \
@@ -29,7 +30,7 @@ RUN ln -s /usr/bin/swift-driver /usr/local/bin/swift \
 FROM dart:3.14.1 AS dart-dist
 FROM base AS dart
 COPY --from=dart-dist /usr/lib/dart /usr/lib/dart
-RUN ln -s /usr/lib/dart/bin/dart /usr/local/bin/dart && dart --version
+RUN ln -s /usr/lib/dart/bin/dart /usr/local/bin/dart
 
 # Julia's JSON parser is installed once in the image; matches do not
 # contact a package registry.

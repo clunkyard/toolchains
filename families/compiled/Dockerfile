@@ -8,7 +8,7 @@ FROM cc AS haskell
 RUN apt-get update && apt-get install -y --no-install-recommends ghc libghc-aeson-dev && rm -rf /var/lib/apt/lists/*
 
 FROM cc AS ocaml
-RUN apt-get update && apt-get install -y --no-install-recommends ocaml-nox ocaml-findlib libyojson-ocaml-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ocaml ocaml-findlib libyojson-ocaml-dev && rm -rf /var/lib/apt/lists/*
 
 FROM cc AS d
 RUN apt-get update && apt-get install -y --no-install-recommends ldc && rm -rf /var/lib/apt/lists/*
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gnucobol && rm 
 FROM cc AS common-lisp
 RUN apt-get update && apt-get install -y --no-install-recommends sbcl && rm -rf /var/lib/apt/lists/*
 
-FROM ubuntu:24.04 AS json-fortran-build
+FROM ubuntu:26.04 AS json-fortran-build
 ARG JSON_FORTRAN_VERSION=9.3.1
 ARG JSON_FORTRAN_SHA256=301a8d205bc7510b21c731130c30babd552c33e3f20568ce732b5e165b1f7a86
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates cmake curl gfortran \
@@ -50,7 +50,7 @@ RUN jsonfortran_lib="$(find /opt/json-fortran -name json_module.mod -printf '%h\
  && ldconfig
 ENV PKG_CONFIG_PATH=/opt/json-fortran/lib/pkgconfig:/opt/json-fortran/lib64/pkgconfig
 
-FROM ubuntu:24.04 AS mercury-build
+FROM ubuntu:26.04 AS mercury-build
 ARG MERCURY_VERSION=22.01.9
 ARG MERCURY_SHA256=582639d89530dd6539c3af01b841f682e6554c3ca5c09be124e789d7ca4b2b58
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends minizinc && rm 
 FROM python AS forth
 RUN apt-get update && apt-get install -y --no-install-recommends gforth && rm -rf /var/lib/apt/lists/*
 
-FROM ubuntu:24.04 AS gnuapl-build
+FROM ubuntu:26.04 AS gnuapl-build
 ARG GNU_APL_VERSION=2.0
 ARG GNU_APL_SHA256=24bbb744fce47e62837234a053bdeecee51b9ea61c82c79f7cc191bc6a54c0a1
 RUN apt-get update && apt-get install -y --no-install-recommends \
