@@ -1,6 +1,6 @@
 # make PROFILE builds that profile's image into the local Docker,
-# make test-PROFILE plays its starter in it, and make readme regenerates
-# the README's table from toolchains.yaml.
+# make test-PROFILE builds and runs a small program in it, and make readme
+# regenerates the README's table from toolchains.yaml.
 PROFILES := $(shell yq '.profiles | keys | .[]' toolchains.yaml)
 CLI_VERSION ?= $(shell npm view @clunkyard/cli@2 version --json | jq -r 'if type == "array" then last else . end')
 field = $(shell yq '.profiles["$(1)"].$(2)' toolchains.yaml)

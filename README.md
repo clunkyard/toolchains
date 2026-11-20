@@ -27,11 +27,12 @@ that directory, so build output and replays are yours, not root's.
 `opponents`, `replay` and `clean` pass through to the CLI too; publish a
 port (`-p 8787:8787`) to watch a replay.
 
-Building and playing against the practice rival need no network
-(`--network none` works). A house robot as an opponent is fetched from
-clunkyard.com once and cached in the project's `.clunkyard/`; it builds with
-its own language's toolchain, so in another language's image only the arena
-language robots (Vane, Cadence, Glyph) can play.
+A project's first build downloads the engine and the language's SDK into
+its `.clunkyard/`; after that, building and playing against the practice
+rival need no network (`--network none` works). A house robot as an
+opponent is fetched from clunkyard.com once and cached there too; it builds
+with its own language's toolchain, so in another language's image only the
+arena language robots (Vane, Cadence, Glyph) can play.
 
 ## How the images are made
 
@@ -40,9 +41,8 @@ Each image is Ubuntu 26.04, the hosted builder's base, with Node, the
 language's toolchain at the version the hosted builder supports. The CLI
 pins the engine and the language's SDK, and its builds run the hosted
 builder's own recipes from that engine, so `build` uses the hosted build's
-commands and flags. At image build time the CLI fetches the starter, the
-engine and the SDK, and builds the starter once, which warms every cache a
-build uses.
+commands and flags. An image holds no Clunkyard SDK: the hosted builder adds
+its own, and the CLI fetches the one it pins.
 
 Images take the newest 2.x CLI when they are built, recorded in the
 `com.clunkyard.cli.version` label; the toolchain version is in
@@ -53,9 +53,10 @@ version and the commit of this repository.
 toolchains.yaml        every profile: its family, version and platforms
 base/                  Ubuntu, Node, the CLI and the entrypoint
 families/<family>/     one Dockerfile per toolchain family, a stage per profile
-image.Dockerfile       the last step of every image: prepare the profile
+image.Dockerfile       the last step of every image: record the profile
 docker-bake.hcl        base, the profile's stage, then the image
-scripts/smoke-test     new, build and run in an image, offline
+scripts/smoke          a small program per profile, built and run in its image
+scripts/smoke-test     runs it in an image, offline, as an ordinary user
 ```
 
 Profiles in one family share its stages: C, C++ and Hew share wasi-sdk;
@@ -69,7 +70,7 @@ a Mac with Apple Silicon, add `--platform linux/amd64` to `docker run`.
 
 ```sh
 make cobol          # build ghcr.io/clunkyard/toolchain/cobol:latest locally
-make test-cobol     # play its starter in it
+make test-cobol     # build and run a small COBOL program in it
 make readme         # regenerate the table below from toolchains.yaml
 ```
 

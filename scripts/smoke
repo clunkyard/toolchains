@@ -1,0 +1,146 @@
+#!/bin/sh
+# Runs inside an image (scripts/smoke-test pipes it in): builds and runs a
+# small program in PROFILE's language with the image's own toolchain, with no
+# network, and prints what it computed. Each program prints 42.
+set -eu
+profile=$1
+work=$(mktemp -d)
+cd "$work"
+export HOME="$work/home"
+mkdir -p "$HOME"
+wasm_run='const b=require("fs").readFileSync(process.argv[1]);WebAssembly.instantiate(b,{}).then(({instance})=>console.log(instance.exports.answer()))'
+
+case $profile in
+  vane|cadence|glyph|javascript)
+    node -e 'console.log(6 * 7)' ;;
+  typescript)
+    echo 'const answer: number = 6 * 7; console.log(answer);' > a.ts
+    tsc --outDir out a.ts && node out/a.js ;;
+  assemblyscript-wasm)
+    echo 'export function answer(): i32 { return 6 * 7; }' > a.ts
+    asc a.ts --outFile a.wasm --runtime stub && node -e "$wasm_run" a.wasm ;;
+  wat)
+    echo '(module (func (export "answer") (result i32) (i32.mul (i32.const 6) (i32.const 7))))' > a.wat
+    wat2wasm a.wat -o a.wasm && node -e "$wasm_run" a.wasm ;;
+  shell)
+    echo '{"a": 6, "b": 7}' | jq '.a * .b' ;;
+  bqn)
+    bqn -p '6×7' ;;
+  c|cpp|c-wasm|hew)
+    printf '#include <stdio.h>\nint main(void){printf("%%d\\n",6*7);return 0;}\n' > a.c
+    printf 'int answer(void){return 6*7;}\n' > w.c
+    "$WASI_SDK_PATH/bin/clang" --target=wasm32 -nostdlib -Wl,--no-entry -Wl,--export=answer -O2 -o w.wasm w.c
+    node -e "$wasm_run" w.wasm >/dev/null
+    case $profile in
+      c) clang-23 -O2 -o a a.c && ./a ;;
+      cpp) printf '#include <iostream>\nint main(){std::cout<<6*7<<"\\n";}\n' > a.cpp && clang++-23 -std=c++20 -O2 -o a a.cpp && ./a ;;
+      c-wasm) clang --target=wasm32 -nostdlib -Wl,--no-entry -Wl,--export=answer -O2 -o u.wasm w.c && node -e "$wasm_run" u.wasm ;;
+      hew) echo 'fn main() { println(6 * 7); }' > a.hew && hew build a.hew -o a && ./a ;;
+    esac ;;
+  zig)
+    printf 'const std = @import("std");\npub fn main() void { std.debug.print("{d}\\n", .{6 * 7}); }\n' > a.zig
+    zig build-exe a.zig -femit-bin=a 2>/dev/null && ./a 2>&1 ;;
+  zig-wasm)
+    echo 'export fn answer() i32 { return 6 * 7; }' > a.zig
+    zig build-exe a.zig -target wasm32-freestanding -fno-entry -rdynamic -femit-bin=a.wasm && node -e "$wasm_run" a.wasm ;;
+  rust)
+    echo 'fn main() { println!("{}", 6 * 7); }' > a.rs
+    rustc -O a.rs -o a && ./a ;;
+  rust-wasm)
+    echo '#[no_mangle] pub extern "C" fn answer() -> i32 { 6 * 7 }' > a.rs
+    rustc -O --target wasm32-unknown-unknown --crate-type cdylib a.rs -o a.wasm && node -e "$wasm_run" a.wasm ;;
+  java)
+    echo 'class A { public static void main(String[] a) { System.out.println(6 * 7); } }' > A.java
+    javac A.java && java A ;;
+  kotlin)
+    echo 'fun main() { println(6 * 7) }' > a.kt
+    kotlinc a.kt -include-runtime -d a.jar 2>/dev/null && java -jar a.jar ;;
+  scala)
+    echo 'object A { def main(args: Array[String]): Unit = println(6 * 7) }' > A.scala
+    scalac A.scala && scala A ;;
+  clojure)
+    echo '(require (quote clojure.data.json)) (println (* 6 7))' > a.clj
+    java -cp /usr/share/java/clojure.jar:/usr/share/java/data.json.jar clojure.main a.clj ;;
+  csharp)
+    dotnet new console -o a >/dev/null && sed -i 's/Console.WriteLine(.*);/Console.WriteLine(6 * 7);/' a/Program.cs && dotnet run --project a ;;
+  fsharp)
+    dotnet new console -lang 'F#' -o a >/dev/null && sed -i 's/printfn .*/printfn "%d" (6 * 7)/' a/Program.fs && dotnet run --project a ;;
+  powershell)
+    pwsh -NoProfile -Command '6 * 7' ;;
+  erlang)
+    erl -noshell -eval 'io:format("~p~n", [6 * 7]), halt().' ;;
+  elixir)
+    elixir -e 'IO.puts(6 * 7)' ;;
+  python)
+    python3 -c 'print(6 * 7)' ;;
+  clips)
+    python3 -c 'import clips; print(int(clips.Environment().eval("(* 6 7)")))' ;;
+  minizinc)
+    echo 'var 1..100: x; constraint x = 6 * 7; solve satisfy; output [show(x)];' > a.mzn
+    minizinc --solver gecode a.mzn | head -n 1 ;;
+  forth)
+    gforth -e '6 7 * . cr bye' | tr -d ' ' ;;
+  apl)
+    printf '6×7\n)OFF\n' | apl --silent --noColor --noCIN 2>/dev/null | grep -m 1 -o '42' ;;
+  go)
+    printf 'package main\nimport "fmt"\nfunc main() { fmt.Println(6 * 7) }\n' > a.go
+    go run a.go ;;
+  swift)
+    echo 'print(6 * 7)' > a.swift
+    swiftc -O a.swift -o a && ./a ;;
+  dart)
+    echo 'void main() { print(6 * 7); }' > a.dart
+    dart compile exe a.dart -o a >/dev/null && ./a ;;
+  julia)
+    julia --startup-file=no -e 'using JSON3; println(JSON3.read("{\"a\":6}").a * 7)' ;;
+  haskell)
+    printf 'import Data.Aeson ()\nmain :: IO ()\nmain = print (6 * 7 :: Int)\n' > a.hs
+    ghc -O a.hs -o a >/dev/null && ./a ;;
+  ocaml)
+    echo 'let () = print_endline (Yojson.Safe.to_string (`Int (6 * 7)))' > a.ml
+    ocamlfind ocamlopt -package yojson -linkpkg a.ml -o a && ./a ;;
+  fortran)
+    printf 'program a\n  use json_module\n  print "(i0)", 6 * 7\nend program a\n' > a.f90
+    gfortran a.f90 -I/opt/json-fortran/include -L/opt/json-fortran/lib -ljsonfortran -o a && ./a ;;
+  d)
+    printf 'import std.stdio;\nvoid main() { writeln(6 * 7); }\n' > a.d
+    ldc2 a.d -of=a >/dev/null && ./a ;;
+  ada)
+    printf 'with Ada.Text_IO;\nprocedure A is\nbegin\n   Ada.Text_IO.Put_Line (Integer'"'"'Image (6 * 7) (2 .. 3));\nend A;\n' > a.adb
+    gnatmake -q a.adb && ./a ;;
+  nim)
+    echo 'echo 6 * 7' > a.nim
+    nim c --hints:off -o:a a.nim >/dev/null 2>&1 && ./a ;;
+  mercury)
+    printf ':- module a.\n:- interface.\n:- import_module io.\n:- pred main(io::di, io::uo) is det.\n:- implementation.\n:- import_module int.\nmain(!IO) :- io.write_int(6 * 7, !IO), io.nl(!IO).\n' > a.m
+    mmc --make a >/dev/null 2>&1 && ./a ;;
+  pascal)
+    echo 'program a; begin writeln(6 * 7); end.' > a.pas
+    fpc -oa a.pas >/dev/null && ./a ;;
+  basic)
+    echo 'print 6 * 7' > a.bas
+    fbc a.bas -x a >/dev/null && ./a | tr -d ' ' ;;
+  cobol)
+    printf '       IDENTIFICATION DIVISION.\n       PROGRAM-ID. A.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       01 N PIC 99.\n       PROCEDURE DIVISION.\n           COMPUTE N = 6 * 7\n           DISPLAY N\n           STOP RUN.\n' > a.cob
+    cobc -x -o a a.cob && ./a ;;
+  common-lisp)
+    echo '(format t "~d~%" (* 6 7))' > a.lisp
+    sbcl --script a.lisp ;;
+  perl)
+    perl -e 'print 6 * 7, "\n"' ;;
+  lua)
+    lua -e 'print(6 * 7)' ;;
+  ruby)
+    ruby -e 'require "json"; puts JSON.parse("[6]")[0] * 7' ;;
+  r)
+    Rscript -e 'library(jsonlite); cat(fromJSON("[6]") * 7, "\n", sep = "")' ;;
+  php)
+    php -r 'echo json_decode("[6]")[0] * 7, "\n";' ;;
+  prolog)
+    swipl -g 'X is 6 * 7, writeln(X)' -t halt ;;
+  chr)
+    printf ':- use_module(library(chr)).\n:- chr_constraint n/1.\nn(X) <=> Y is X * 7, writeln(Y).\n' > a.pl
+    swipl -q -g 'n(6)' -t halt a.pl ;;
+  *)
+    echo "No smoke program for $profile" >&2; exit 2 ;;
+esac

@@ -21,15 +21,12 @@ ARG CLI_VERSION=2
 RUN npm install --global --no-fund --no-audit "@clunkyard/cli@${CLI_VERSION}" \
  && npm cache clean --force
 
-# HOME holds the compilers' caches, warmed by the image's own starter build.
-# npm uses its cache before the registry, so JavaScript and TypeScript
-# projects install the SDK without the network.
+# HOME holds the compilers' caches, writable by any uid.
 ENV HOME=/opt/clunkyard/home \
     DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_NOLOGO=1 \
-    npm_config_prefer_offline=true \
     npm_config_update_notifier=false
-RUN install -d -m 0777 /opt/clunkyard/cache /opt/clunkyard/home /bot
+RUN install -d -m 0777 /opt/clunkyard/home /bot
 COPY clunkyard-toolchain /usr/local/bin/clunkyard-toolchain
 WORKDIR /bot
 ENTRYPOINT ["tini", "--", "clunkyard-toolchain"]
