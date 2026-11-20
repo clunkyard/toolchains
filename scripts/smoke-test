@@ -1,21 +1,17 @@
 #!/bin/sh
-# Plays an image's own starter in a fresh project, with no network: new,
-# build, then a match against the practice rival. The project belongs to
-# the caller, and so must everything the image writes into it.
+# Builds and runs a small program in an image's language with its own
+# toolchain, with no network (scripts/smoke), as an ordinary user. The image
+# tests itself: it needs no Clunkyard SDK and no published package.
 set -eu
 image=$1
-project=$(mktemp -d)
-trap 'rm -rf "$project"' EXIT
-play() { docker run --rm --network none -v "$project":/bot "$image" "$@"; }
-
-play version
-play new
-play build
-play run
-test -s "$project/replays/trial-42.json"
-foreign=$(find "$project" ! -user "$(id -u)" | head -n 5)
-if [ -n "$foreign" ]; then
-  echo "Files in the project not owned by uid $(id -u):" >&2
-  echo "$foreign" >&2
+profile=${2:-$(docker image inspect "$image" --format '{{ index .Config.Labels "com.clunkyard.profile" }}')}
+here=$(dirname "$0")
+out=$(docker run --rm -i --network none --user 1000:1000 --entrypoint sh "$image" -s -- "$profile" < "$here/smoke") || {
+  echo "$profile: the program failed:" >&2; printf '%s\n' "$out" >&2; exit 1; }
+answer=$(printf '%s\n' "$out" | tail -n 1 | tr -d '[:space:]')
+if [ "$answer" != 42 ]; then
+  echo "$profile: expected 42, got:" >&2
+  printf '%s\n' "$out" >&2
   exit 1
 fi
+echo "$profile: 42"

@@ -1,12 +1,11 @@
 #!/bin/sh
-# The image's entrypoint: the Clunkyard CLI on the project mounted at /bot,
-# with the engine, SDK and caches the image prepared, so nothing downloads.
+# The image's entrypoint: the Clunkyard CLI on the project mounted at /bot.
+# The CLI keeps the engine and SDK it downloads in the project's .clunkyard/,
+# so only a project's first build needs the network.
 set -eu
 
-cache=/opt/clunkyard/cache
-starter=/opt/clunkyard/starter
-profile=$(cat /opt/clunkyard/profile 2>/dev/null || echo unprepared)
-cli() { exec clunkyard --shared-cache "$cache" "$@"; }
+profile=$(cat /opt/clunkyard/profile)
+cli() { exec clunkyard "$@"; }
 
 usage() {
   cat <<TEXT
@@ -27,12 +26,12 @@ TEXT
 # Work as the owner of /bot, so build output and replays are the caller's.
 # A root-owned /bot (rootless Docker, Docker Desktop, or no mount) keeps root,
 # which is the caller there; `docker run --user` skips this. Builds update
-# the SDK's bindings and the caches in place, so those become the owner's
-# too; they are small, and each container has its own copy.
-if [ "$(id -u)" = 0 ] && [ "${1:-}" != prepare ]; then
+# the compilers' caches in HOME, so those become the owner's too; each
+# container has its own copy.
+if [ "$(id -u)" = 0 ]; then
   owner=$(stat -c %u:%g /bot)
   if [ "${owner%%:*}" != 0 ]; then
-    chown -R "$owner" "$cache" "$HOME"
+    chown -R "$owner" "$HOME"
     exec setpriv --reuid="${owner%%:*}" --regid="${owner##*:}" --clear-groups "$0" "$@"
   fi
 fi
@@ -57,6 +56,8 @@ case $command in
   opponents|replay|clean) need_project; cli "$command" "$@" ;;
   new)
     if [ -n "$(ls -A /bot)" ]; then echo "/bot is not empty; new copies the starter only into an empty directory." >&2; exit 2; fi
+    starter=$(mktemp -d)/starter
+    clunkyard new "$profile" "$starter"
     cp -R "$starter"/. /bot/
     echo "Copied the $profile starter into /bot. Next: build, then run." ;;
   version)
@@ -65,16 +66,5 @@ case $command in
     echo "cli $(clunkyard --version)" ;;
   shell) exec bash "$@" ;;
   help|--help|-h) usage ;;
-  # Image build only: fetch this profile's starter, engine and SDK, and build
-  # the starter once so every cache a build fills is warm.
-  prepare)
-    profile=$1 version=$2
-    clunkyard new "$profile" "$starter"
-    (cd "$starter" && clunkyard --shared-cache "$cache" build)
-    rm -rf "$starter/.clunkyard"
-    echo "$profile" > /opt/clunkyard/profile
-    echo "$version" > /opt/clunkyard/toolchain-version
-    # Writable by any uid as well, for `docker run --user`.
-    chmod -R a+rwX "$cache" "$HOME" ;;
   *) echo "Unknown command: $command" >&2; usage >&2; exit 2 ;;
 esac

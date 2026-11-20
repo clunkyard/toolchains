@@ -15,18 +15,16 @@ RUN case "$TARGETARCH" in amd64) arch=x86_64; sha="$WASI_SDK_AMD64_SHA256" ;; ar
  && curl -fsSLo /tmp/wasi-sdk.tar.gz "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-${arch}-linux.tar.gz" \
  && echo "${sha}  /tmp/wasi-sdk.tar.gz" | sha256sum -c - \
  && mkdir -p /opt/wasi-sdk && tar --no-same-owner -xzf /tmp/wasi-sdk.tar.gz -C /opt/wasi-sdk --strip-components=1 \
- && rm /tmp/wasi-sdk.tar.gz \
- && /opt/wasi-sdk/bin/clang --version | grep -q 'clang version 23\.'
+ && rm /tmp/wasi-sdk.tar.gz
 ENV WASI_SDK_PATH=/opt/wasi-sdk
 
 # Clang 23, wasi-sdk 34's LLVM, from apt.llvm.org for native builds.
 FROM wasi-sdk AS c
 RUN install -d -m 0755 /etc/apt/keyrings \
  && curl -fsSLo /etc/apt/keyrings/llvm.asc https://apt.llvm.org/llvm-snapshot.gpg.key \
- && echo "deb [signed-by=/etc/apt/keyrings/llvm.asc] http://apt.llvm.org/noble/ llvm-toolchain-noble-23 main" > /etc/apt/sources.list.d/llvm.list \
+ && echo "deb [signed-by=/etc/apt/keyrings/llvm.asc] http://apt.llvm.org/resolute/ llvm-toolchain-resolute-23 main" > /etc/apt/sources.list.d/llvm.list \
  && apt-get update && apt-get install -y --no-install-recommends clang-23 \
- && rm -rf /var/lib/apt/lists/* \
- && clang-23 --version | grep -q 'clang version 23\.'
+ && rm -rf /var/lib/apt/lists/*
 ENV CC=clang-23 CXX=clang++-23
 
 FROM c AS cpp

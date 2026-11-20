@@ -10,8 +10,8 @@ profiles:
   javascript:          {family: node, version: node-24.22.3, platforms: "linux/amd64,linux/arm64"}
   typescript:          {family: node, version: typescript-6.0.3, platforms: "linux/amd64,linux/arm64"}
   assemblyscript-wasm: {family: node, version: assemblyscript-0.28.20}
-  wat:                 {family: node, version: wabt-1.0.34}
-  shell:               {family: node, version: jq-1.7}
+  wat:                 {family: node, version: wabt-1.0.36}
+  shell:               {family: node, version: jq-1.8.1}
   bqn:                 {family: node, version: cbqn-0.12.0}
   c:                   {family: wasi, version: wasi-sdk-34, platforms: "linux/amd64,linux/arm64"}
   cpp:                 {family: wasi, version: wasi-sdk-34, platforms: "linux/amd64,linux/arm64"}
@@ -24,36 +24,36 @@ profiles:
   java:                {family: jvm, version: jdk-25.0.5}
   kotlin:              {family: jvm, version: kotlin-2.4.21}
   scala:               {family: jvm, version: scala-2.11.12}
-  clojure:             {family: jvm, version: clojure-1.11.1}
+  clojure:             {family: jvm, version: clojure-1.12.0}
   csharp:              {family: dotnet, version: dotnet-10.0}
   fsharp:              {family: dotnet, version: dotnet-10.0}
   powershell:          {family: dotnet, version: powershell-7.6.10}
-  erlang:              {family: beam, version: otp-25}
-  elixir:              {family: beam, version: elixir-1.14}
-  python:              {family: python, version: python-3.12.3}
+  erlang:              {family: beam, version: otp-27}
+  elixir:              {family: beam, version: elixir-1.18}
+  python:              {family: python, version: python-3.14.4}
   clips:               {family: python, version: clipspy-1.0.6}
-  minizinc:            {family: python, version: minizinc-2.8.2}
+  minizinc:            {family: python, version: minizinc-2.9.3}
   forth:               {family: python, version: gforth-0.7.3}
   apl:                 {family: python, version: gnu-apl-2.0}
   go:                  {family: standalone, version: go-1.27.4}
   swift:               {family: standalone, version: swift-6.4.2}
   dart:                {family: standalone, version: dart-3.14.1}
   julia:               {family: standalone, version: julia-1.13.4}
-  haskell:             {family: compiled, version: ghc-9.4.7}
-  ocaml:               {family: compiled, version: ocaml-4.14.1}
-  fortran:             {family: compiled, version: gfortran-13.3}
-  d:                   {family: compiled, version: ldc-1.36}
-  ada:                 {family: compiled, version: gnat-13.3}
-  nim:                 {family: compiled, version: nim-1.6.14}
+  haskell:             {family: compiled, version: ghc-9.10.3}
+  ocaml:               {family: compiled, version: ocaml-5.4.0}
+  fortran:             {family: compiled, version: gfortran-15.2}
+  d:                   {family: compiled, version: ldc-1.41}
+  ada:                 {family: compiled, version: gnat-14.3}
+  nim:                 {family: compiled, version: nim-2.2.4}
   mercury:             {family: compiled, version: mercury-22.01.9}
   pascal:              {family: compiled, version: fpc-3.2.2}
   basic:               {family: compiled, version: freebasic-1.10.1}
-  cobol:               {family: compiled, version: gnucobol-3.1.2}
-  common-lisp:         {family: compiled, version: sbcl-2.2.9}
-  perl:                {family: scripting, version: perl-5.38.2}
-  lua:                 {family: scripting, version: lua-5.4.6}
-  ruby:                {family: scripting, version: ruby-3.2.3}
-  r:                   {family: scripting, version: r-4.3.3}
-  php:                 {family: scripting, version: php-8.3.6}
-  prolog:              {family: scripting, version: swi-prolog-9.0.4}
-  chr:                 {family: scripting, version: swi-prolog-9.0.4}
+  cobol:               {family: compiled, version: gnucobol-3.2}
+  common-lisp:         {family: compiled, version: sbcl-2.6.0}
+  perl:                {family: scripting, version: perl-5.40.1}
+  lua:                 {family: scripting, version: lua-5.4.8}
+  ruby:                {family: scripting, version: ruby-3.3.8}
+  r:                   {family: scripting, version: r-4.5.2}
+  php:                 {family: scripting, version: php-8.5.4}
+  prolog:              {family: scripting, version: swi-prolog-9.2.9}
+  chr:                 {family: scripting, version: swi-prolog-9.2.9}

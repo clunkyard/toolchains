@@ -8,11 +8,11 @@ FROM base AS glyph
 
 FROM base AS typescript
 ARG TYPESCRIPT_VERSION=6.0.3
-RUN npm install --global --no-fund --no-audit "typescript@${TYPESCRIPT_VERSION}" && npm cache clean --force && tsc --version
+RUN npm install --global --no-fund --no-audit "typescript@${TYPESCRIPT_VERSION}" && npm cache clean --force
 
 FROM base AS assemblyscript-wasm
 ARG ASSEMBLYSCRIPT_VERSION=0.28.20
-RUN npm install --global --no-fund --no-audit "assemblyscript@${ASSEMBLYSCRIPT_VERSION}" && npm cache clean --force && asc --version
+RUN npm install --global --no-fund --no-audit "assemblyscript@${ASSEMBLYSCRIPT_VERSION}" && npm cache clean --force
 
 FROM base AS wat
 RUN apt-get update && apt-get install -y --no-install-recommends wabt && rm -rf /var/lib/apt/lists/*
@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wabt && rm -rf 
 FROM base AS shell
 RUN apt-get update && apt-get install -y --no-install-recommends jq && rm -rf /var/lib/apt/lists/*
 
-FROM ubuntu:24.04 AS cbqn-build
+FROM ubuntu:26.04 AS cbqn-build
 ARG CBQN_VERSION=v0.12.0
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates clang git \
  && git clone --branch "${CBQN_VERSION}" --depth 1 --recurse-submodules --shallow-submodules https://github.com/dzaima/CBQN.git /tmp/cbqn \

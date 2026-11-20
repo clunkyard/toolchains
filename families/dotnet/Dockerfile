@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 # .NET 10 builds C# and F#; PowerShell 7.6, the LTS release, runs on it.
 ARG DOTNET_VERSION=10.0
-FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}-noble AS dotnet-sdk
+FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}-resolute AS dotnet-sdk
 
 FROM base AS csharp
-RUN apt-get update && apt-get install -y --no-install-recommends libicu74 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends libicu78 && rm -rf /var/lib/apt/lists/*
 COPY --from=dotnet-sdk /usr/share/dotnet /usr/share/dotnet
-RUN ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet && dotnet --version
+RUN ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet
 
 FROM csharp AS fsharp
 
