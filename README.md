@@ -46,8 +46,20 @@ build uses.
 
 Images take the newest 2.x CLI when they are built, recorded in the
 `com.clunkyard.cli.version` label; the toolchain version is in
-`org.opencontainers.image.version`. Tags are `latest`, the toolchain
-version and the commit of this repository.
+`org.opencontainers.image.version`.
+
+## Tags
+
+Every image is published in releases, all of them at once, named by date:
+`2026.11.21`, or `2026.11.21.2` for a second release that day. The commit
+that built a release carries the same tag. A release tag never changes; a
+rebuild, such as the weekly one for Ubuntu's security updates, is a new
+release. Clunkyard's hosted builder uses one release for every language,
+so a robot built in `ghcr.io/clunkyard/toolchain/cobol:2026.11.21` builds
+as it does hosted on that release.
+
+Two tags follow the newest release: `latest`, which `docker run` uses when
+no tag is named, and the toolchain version, such as `go-1.27.4`.
 
 ```text
 toolchains.yaml        every profile: its family, version and platforms
@@ -75,8 +87,8 @@ make readme         # regenerate the table below from toolchains.yaml
 
 To add a profile, add a stage named after it to its family's Dockerfile and
 a line to `toolchains.yaml`. GitHub Actions builds every profile on pull
-requests and on `main`, pushes from `main`, and rebuilds everything weekly
-for Ubuntu's security updates.
+requests and on `main`, releases from `main`, and releases a fresh rebuild
+of everything weekly for Ubuntu's security updates.
 
 <!-- table -->
 | Profile | Family | Toolchain | Platforms |

@@ -1,8 +1,12 @@
-# Builds every profile in toolchains.yaml, plays its starter in the image,
-# and on main pushes it to ghcr.io/clunkyard/toolchain/<profile> with
-# provenance and an SBOM. Pull requests build and test without pushing. The
-# weekly run rebuilds from scratch for Ubuntu's security updates and the
-# newest 2.x CLI.
+# Builds every profile in toolchains.yaml and plays its starter in the image.
+# On main it cuts a release: every image is pushed to
+# ghcr.io/clunkyard/toolchain/<profile> under the release tag, the UTC date
+# such as 2026.11.21 (2026.11.21.2 for a second release that day), with
+# provenance and an SBOM, and the commit is tagged with it once every image
+# is out. A release tag is never pushed again: a rebuild is a new release.
+# `latest` and the toolchain version (python-3.14.3) move to each release.
+# Pull requests build and test without pushing. The weekly run rebuilds from
+# scratch for Ubuntu's security updates and the newest 2.x CLI.
 name: images
 
 on:
@@ -20,23 +24,39 @@ concurrency:
   group: images-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+
 jobs:
   matrix:
     runs-on: ubuntu-24.04
     outputs:
       profiles: ${{ steps.read.outputs.profiles }}
       cli: ${{ steps.read.outputs.cli }}
-      revision: ${{ steps.read.outputs.revision }}
+      release: ${{ steps.read.outputs.release }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - id: read
         run: |
           profiles=$(yq -o=json -I=0 '[.profiles | to_entries | .[] | {"profile": .key, "family": .value.family, "version": .value.version, "platforms": (.value.platforms // "linux/amd64")}]' toolchains.yaml)
           cli=$(npm view @clunkyard/cli@2 version --json | jq -r 'if type == "array" then last else . end')
+          # The first of today's names that no commit tag and no image has,
+          # so an unfinished release is not overwritten either.
+          day=$(date -u +%Y.%m.%d) release=$(date -u +%Y.%m.%d) n=1
+          taken() {
+            git rev-parse -q --verify "refs/tags/$1" >/dev/null && return 0
+            for profile in $(yq '.profiles | keys | .[]' toolchains.yaml); do
+              docker buildx imagetools inspect "ghcr.io/clunkyard/toolchain/$profile:$1" >/dev/null 2>&1 && return 0
+            done
+            return 1
+          }
+          while taken "$release"; do n=$((n + 1)); release=$day.$n; done
           echo "profiles=$profiles" >> "$GITHUB_OUTPUT"
           echo "cli=$cli" >> "$GITHUB_OUTPUT"
-          echo "revision=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
-          echo "Clunkyard CLI $cli" >> "$GITHUB_STEP_SUMMARY"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "Release $release, Clunkyard CLI $cli" >> "$GITHUB_STEP_SUMMARY"
 
   image:
     name: ${{ matrix.profile }}
@@ -60,7 +80,6 @@ jobs:
       REVISION: ${{ github.sha }}
       IMAGE: ghcr.io/clunkyard/toolchain/${{ matrix.profile }}
       CACHE: ghcr.io/clunkyard/toolchain/cache:${{ matrix.profile }}
-      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v5
       - if: contains(matrix.platforms, 'arm64')
@@ -92,7 +111,7 @@ jobs:
         if: env.PUBLISH == 'true'
         uses: docker/bake-action@v6
         env:
-          TAGS: latest,${{ matrix.version }},${{ needs.matrix.outputs.revision }}
+          TAGS: ${{ needs.matrix.outputs.release }},${{ matrix.version }},latest
         with:
           source: .
           push: true
@@ -116,3 +135,19 @@ jobs:
         run: |
           size=$(docker image inspect "$IMAGE:latest" --format '{{.Size}}')
           echo "| $PROFILE | $TOOLCHAIN_VERSION | $((size / 1000000)) MB |" >> "$GITHUB_STEP_SUMMARY"
+
+  # The release is complete once every image is out: tag the commit with it.
+  release:
+    needs: [matrix, image]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      RELEASE: ${{ needs.matrix.outputs.release }}
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          git tag "$RELEASE" "$GITHUB_SHA"
+          git push origin "refs/tags/$RELEASE"
+          echo "Released $RELEASE" >> "$GITHUB_STEP_SUMMARY"
