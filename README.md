@@ -98,7 +98,7 @@ of everything weekly for Ubuntu's security updates.
 | `cadence` | node | node-24.22.3 | linux/amd64,linux/arm64 |
 | `glyph` | node | node-24.22.3 | linux/amd64,linux/arm64 |
 | `javascript` | node | node-24.22.3 | linux/amd64,linux/arm64 |
-| `typescript` | node | typescript-6.0.3 | linux/amd64,linux/arm64 |
+| `typescript` | node | typescript-7.0.2 | linux/amd64,linux/arm64 |
 | `assemblyscript-wasm` | node | assemblyscript-0.28.20 | linux/amd64 |
 | `wat` | node | wabt-1.0.36 | linux/amd64 |
 | `shell` | node | jq-1.8.1 | linux/amd64 |

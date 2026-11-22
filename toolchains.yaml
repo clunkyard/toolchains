@@ -8,7 +8,7 @@ profiles:
   cadence:             {family: node, version: node-24.22.3, platforms: "linux/amd64,linux/arm64"}
   glyph:               {family: node, version: node-24.22.3, platforms: "linux/amd64,linux/arm64"}
   javascript:          {family: node, version: node-24.22.3, platforms: "linux/amd64,linux/arm64"}
-  typescript:          {family: node, version: typescript-6.0.3, platforms: "linux/amd64,linux/arm64"}
+  typescript:          {family: node, version: typescript-7.0.2, platforms: "linux/amd64,linux/arm64"}
   assemblyscript-wasm: {family: node, version: assemblyscript-0.28.20}
   wat:                 {family: node, version: wabt-1.0.36}
   shell:               {family: node, version: jq-1.8.1}
