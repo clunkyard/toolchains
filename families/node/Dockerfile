@@ -7,7 +7,7 @@ FROM base AS cadence
 FROM base AS glyph
 
 FROM base AS typescript
-ARG TYPESCRIPT_VERSION=6.0.3
+ARG TYPESCRIPT_VERSION=7.0.2
 RUN npm install --global --no-fund --no-audit "typescript@${TYPESCRIPT_VERSION}" && npm cache clean --force
 
 FROM base AS assemblyscript-wasm
